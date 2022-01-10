@@ -183,7 +183,7 @@ class Runner(object):
 		elif model_name.lower()	== 'compgcn_conve': 	
 			model = CompGCN_ConvE(self.edge_index, self.edge_type, params=self.p)
 		elif model_name.lower()	== 'ucompgcn_transe': 	
-			model = UCompGCN_ConvE(self.edge_index, self.edge_type, params=self.p)
+			model = UCompGCN_TransE(self.edge_index, self.edge_type, params=self.p)
 		elif model_name.lower()	== 'ucompgcn_distmult': 	
 			model = UCompGCN_DistMult(self.edge_index, self.edge_type, params=self.p)
 		elif model_name.lower()	== 'ucompgcn_conve': 	
