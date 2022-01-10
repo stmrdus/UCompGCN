@@ -141,11 +141,11 @@ class UCompGCNBase(BaseModel):
 			edge_weight = edge_weights[j]
 			perm 		= perms[j]
 
-			up = torch.zeros_like(res)
-			up[perm] = x
-			x = res + up if self.sum_res else torch.cat((res, up), dim=-1)
+			up 			= torch.zeros_like(res)
+			up[perm] 	= x
+			x 			= res + up if self.sum_res else torch.cat((res, up), dim=-1)
 
-			x, r = self.up_convs[i](x, edge_index, edge_weight, rel_embed=rs[j])
+			x, r 		= self.up_convs[i](x, edge_index, edge_weight, rel_embed=rs[j])
 			
 			
 		sub_emb	= torch.index_select(x, 0, sub)
@@ -167,7 +167,36 @@ class CompGCN_TransE(CompGCNBase):
 
 		return score
 
+class UCompGCN_TransE(UCompGCNBase):
+	def __init__(self, edge_index, edge_type, params=None):
+		super(self.__class__, self).__init__(edge_index, edge_type, params.num_rel, params)
+		self.drop = torch.nn.Dropout(self.p.hid_drop)
+
+	def forward(self, sub, rel):
+
+		sub_emb, rel_emb, all_ent	= self.forward_base(sub, rel, self.drop, self.drop)
+		obj_emb						= sub_emb + rel_emb
+		x							= self.p.gamma - torch.norm(obj_emb.unsqueeze(1) - all_ent, p=1, dim=2)		
+		score						= torch.sigmoid(x)
+
+		return score
+
 class CompGCN_DistMult(CompGCNBase):
+	def __init__(self, edge_index, edge_type, params=None):
+		super(self.__class__, self).__init__(edge_index, edge_type, params.num_rel, params)
+		self.drop = torch.nn.Dropout(self.p.hid_drop)
+
+	def forward(self, sub, rel):
+
+		sub_emb, rel_emb, all_ent	= self.forward_base(sub, rel, self.drop, self.drop)
+		obj_emb						= sub_emb * rel_emb
+		x 							= torch.mm(obj_emb, all_ent.transpose(1, 0))
+		x 							+= self.bias.expand_as(x)
+		score 						= torch.sigmoid(x)
+
+		return score
+
+class UCompGCN_DistMult(UCompGCNBase):
 	def __init__(self, edge_index, edge_type, params=None):
 		super(self.__class__, self).__init__(edge_index, edge_type, params.num_rel, params)
 		self.drop = torch.nn.Dropout(self.p.hid_drop)
@@ -209,6 +238,50 @@ class CompGCN_ConvE(CompGCNBase):
 
 	def forward(self, sub, rel):
 
+		sub_emb, rel_emb, all_ent	= self.forward_base(sub, rel, self.hidden_drop, self.feature_drop)
+		stk_inp						= self.concat(sub_emb, rel_emb)
+		x							= self.bn0(stk_inp)
+		x							= self.m_conv1(x)
+		x							= self.bn1(x)
+		x							= F.relu(x)
+		x							= self.feature_drop(x)
+		x							= x.view(-1, self.flat_sz)
+		x							= self.fc(x)
+		x							= self.hidden_drop2(x)
+		x							= self.bn2(x)
+		x							= F.relu(x)
+		x							= torch.mm(x, all_ent.transpose(1,0))
+		x 							+= self.bias.expand_as(x)
+		score 						= torch.sigmoid(x)
+
+		return score
+
+class UCompGCN_ConvE(UCompGCNBase):
+	def __init__(self, edge_index, edge_type, params=None):
+		super(self.__class__, self).__init__(edge_index, edge_type, params.num_rel, params)
+
+		self.bn0			= torch.nn.BatchNorm2d(1)
+		self.bn1			= torch.nn.BatchNorm2d(self.p.num_filt)
+		self.bn2			= torch.nn.BatchNorm1d(self.p.embed_dim)
+		
+		self.hidden_drop	= torch.nn.Dropout(self.p.hid_drop)
+		self.hidden_drop2	= torch.nn.Dropout(self.p.hid_drop2)
+		self.feature_drop	= torch.nn.Dropout(self.p.feat_drop)
+		self.m_conv1		= torch.nn.Conv2d(1, out_channels=self.p.num_filt, kernel_size=(self.p.ker_sz, self.p.ker_sz), stride=1, padding=0, bias=self.p.bias)
+
+		flat_sz_h			= int(2 * self.p.k_w) - self.p.ker_sz + 1
+		flat_sz_w			= self.p.k_h 	    - self.p.ker_sz + 1
+		self.flat_sz		= flat_sz_h * flat_sz_w * self.p.num_filt
+		self.fc				= torch.nn.Linear(self.flat_sz, self.p.embed_dim)
+
+	def concat(self, e1_embed, rel_embed):
+		e1_embed	= e1_embed. view(-1, 1, self.p.embed_dim)
+		rel_embed	= rel_embed.view(-1, 1, self.p.embed_dim)
+		stack_inp	= torch.cat([e1_embed, rel_embed], 1)
+		stack_inp	= torch.transpose(stack_inp, 2, 1).reshape((-1, 1, 2*self.p.k_w, self.p.k_h))
+		return stack_inp
+
+	def forward(self, sub, rel):
 		sub_emb, rel_emb, all_ent	= self.forward_base(sub, rel, self.hidden_drop, self.feature_drop)
 		stk_inp						= self.concat(sub_emb, rel_emb)
 		x							= self.bn0(stk_inp)
