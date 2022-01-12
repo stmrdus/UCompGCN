@@ -37,8 +37,8 @@ def remove_self_loops(edge_index: torch.Tensor, edge_attr: OptTensor = None) -> 
             edge features. (default: :obj:`None`)
     :rtype: (:class:`LongTensor`, :class:`Tensor`)
     """
-    mask = edge_index[0] != edge_index[1]
-    edge_index = edge_index[:, mask]
+    mask        = edge_index[0] != edge_index[1]
+    edge_index  = edge_index[:, mask]
     if edge_attr is None:
         return edge_index, None
     else:
@@ -69,10 +69,10 @@ def add_self_loops(
             :obj:`max_val + 1` of :attr:`edge_index`. (default: :obj:`None`)
     :rtype: (:class:`LongTensor`, :class:`Tensor`)
     """
-    num_node = maybe_num_nodes(edge_index, num_nodes)
+    num_node    = maybe_num_nodes(edge_index, num_nodes)
 
-    loop_index = torch.arange(0, num_node, dtype=torch.long, device=edge_index.device)
-    loop_index = loop_index.unsqueeze(0).repeat(2, 1)
+    loop_index  = torch.arange(0, num_node, dtype=torch.long, device=edge_index.device)
+    loop_index  = loop_index.unsqueeze(0).repeat(2, 1)
 
     if edge_attr is not None:
         if fill_value is None:
@@ -118,14 +118,14 @@ def sort_edge_index(
     :rtype: :class:`LongTensor` if :attr:`edge_attr` is :obj:`None`, else
         (:class:`LongTensor`, :obj:`Tensor` or :obj:`List[Tensor]]`)
     """
-    num_nodes = maybe_num_nodes(edge_index, num_nodes)
+    num_nodes   = maybe_num_nodes(edge_index, num_nodes)
 
-    idx = edge_index[1 - int(sort_by_row)] * num_nodes
-    idx += edge_index[int(sort_by_row)]
+    idx         = edge_index[1 - int(sort_by_row)] * num_nodes
+    idx         += edge_index[int(sort_by_row)]
 
-    perm = idx.argsort()
+    perm        = idx.argsort()
 
-    edge_index = edge_index[:, perm]
+    edge_index  = edge_index[:, perm]
 
     if edge_attr is None:
         return edge_index

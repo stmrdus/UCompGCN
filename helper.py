@@ -44,33 +44,33 @@ def get_logger(name, log_dir, config_dir):
 	A logger object which writes to both file and stdout
 		
 	"""
-	config_dict = json.load(open( config_dir + 'log_config.json'))
+	config_dict 										= json.load(open( config_dir + 'log_config.json'))
 	config_dict['handlers']['file_handler']['filename'] = log_dir + name.replace('/', '-')
 	logging.config.dictConfig(config_dict)
-	logger = logging.getLogger(name)
+	logger 												= logging.getLogger(name)
 
-	std_out_format = '%(asctime)s - [%(levelname)s] - %(message)s'
-	consoleHandler = logging.StreamHandler(sys.stdout)
+	std_out_format 										= '%(asctime)s - [%(levelname)s] - %(message)s'
+	consoleHandler 										= logging.StreamHandler(sys.stdout)
 	consoleHandler.setFormatter(logging.Formatter(std_out_format))
 	logger.addHandler(consoleHandler)
 
 	return logger
 
 def get_combined_results(left_results, right_results):
-	results = {}
-	count   = float(left_results['count'])
+	results 				= {}
+	count   				= float(left_results['count'])
 
-	results['left_mr']	= round(left_results ['mr'] /count, 5)
-	results['left_mrr']	= round(left_results ['mrr']/count, 5)
-	results['right_mr']	= round(right_results['mr'] /count, 5)
+	results['left_mr']		= round(left_results ['mr'] /count, 5)
+	results['left_mrr']		= round(left_results ['mrr']/count, 5)
+	results['right_mr']		= round(right_results['mr'] /count, 5)
 	results['right_mrr']	= round(right_results['mrr']/count, 5)
-	results['mr']		= round((left_results['mr']  + right_results['mr']) /(2*count), 5)
-	results['mrr']		= round((left_results['mrr'] + right_results['mrr'])/(2*count), 5)
+	results['mr']			= round((left_results['mr']  + right_results['mr']) /(2*count), 5)
+	results['mrr']			= round((left_results['mrr'] + right_results['mrr'])/(2*count), 5)
 
 	for k in range(10):
-		results['left_hits@{}'.format(k+1)]	= round(left_results ['hits@{}'.format(k+1)]/count, 5)
+		results['left_hits@{}'.format(k+1)]		= round(left_results ['hits@{}'.format(k+1)]/count, 5)
 		results['right_hits@{}'.format(k+1)]	= round(right_results['hits@{}'.format(k+1)]/count, 5)
-		results['hits@{}'.format(k+1)]		= round((left_results['hits@{}'.format(k+1)] + right_results['hits@{}'.format(k+1)])/(2*count), 5)
+		results['hits@{}'.format(k+1)]			= round((left_results['hits@{}'.format(k+1)] + right_results['hits@{}'.format(k+1)])/(2*count), 5)
 	return results
 
 def get_param(shape):
@@ -88,7 +88,7 @@ def conj(a):
 	return a
 
 def cconv(a, b):
-	return torch.irfft(com_mult(torch.rfft(a, 1), torch.rfft(b, 1)), 1, signal_sizes=(a.shape[-1],))
+	return torch.fft.irfftn(com_mult(torch.fft.rfftn(a, 1), torch.fft.rfftn(b, 1)), 1, signal_sizes=(a.shape[-1],))
 
 def ccorr(a, b):
-	return torch.irfft(com_mult(conj(torch.rfft(a, 1)), torch.rfft(b, 1)), 1, signal_sizes=(a.shape[-1],))
+	return torch.fft.irfftn(torch.conj(torch.fft.rfftn(a, (-1))) * torch.fft.rfftn(b, (-1)), (-1))

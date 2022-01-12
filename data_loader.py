@@ -72,15 +72,15 @@ class TestDataset(Dataset):
 	"""
 	def __init__(self, triples, params):
 		self.triples	= triples
-		self.p 		= params
+		self.p 			= params
 
 	def __len__(self):
 		return len(self.triples)
 
 	def __getitem__(self, idx):
-		ele		= self.triples[idx]
+		ele				= self.triples[idx]
 		triple, label	= torch.LongTensor(ele['triple']), np.int32(ele['label'])
-		label		= self.get_label(label)
+		label			= self.get_label(label)
 
 		return triple, label
 
@@ -92,5 +92,6 @@ class TestDataset(Dataset):
 	
 	def get_label(self, label):
 		y = np.zeros([self.p.num_ent], dtype=np.float32)
-		for e2 in label: y[e2] = 1.0
+		for e2 in label: 
+			y[e2] = 1.0
 		return torch.FloatTensor(y)
