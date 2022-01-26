@@ -34,15 +34,11 @@ class CompGCNConv(MessagePassing):
         num_edges = edge_index.size(1) // 2
         num_ent = x.size(0)
 
-        self.in_index, self.out_index = edge_index[:,
-                                                   :num_edges], edge_index[:, num_edges:]
-        self.in_type,  self.out_type = edge_type[:
-                                                 num_edges], 	 edge_type[num_edges:]
+        self.in_index, self.out_index = edge_index[:,:num_edges], edge_index[:, num_edges:]
+        self.in_type,  self.out_type = edge_type[:num_edges], 	 edge_type[num_edges:]
 
-        self.loop_index = torch.stack(
-            [torch.arange(num_ent), torch.arange(num_ent)]).to(self.device)
-        self.loop_type = torch.full((num_ent,), rel_embed.size(
-            0)-1, dtype=torch.long).to(self.device)
+        self.loop_index = torch.stack([torch.arange(num_ent), torch.arange(num_ent)]).to(self.device)
+        self.loop_type = torch.full((num_ent,), rel_embed.size(0)-1, dtype=torch.long).to(self.device)
 
         self.in_norm = self.compute_norm(self.in_index,  num_ent)
         self.out_norm = self.compute_norm(self.out_index, num_ent)
