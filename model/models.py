@@ -134,8 +134,7 @@ class UCompGCNBase(BaseModel):
         edge_index = self.edge_index
         edge_weight = self.edge_type
 
-        r = self.init_rel if self.p.score_func != 'transe' else torch.cat(
-            [self.init_rel, -self.init_rel], dim=0)
+        r = self.init_rel if self.p.score_func != 'transe' else torch.cat([self.init_rel, -self.init_rel], dim=0)
 
         x, r = self.down_convs[0](
             self.init_embed, edge_index, edge_weight, rel_embed=r)
@@ -146,15 +145,18 @@ class UCompGCNBase(BaseModel):
         edge_indices = [edge_index]
         edge_weights = [edge_weight]
         perms = []
+        rs = [r]
 
         for i in range(1, self.depth + 1):
             #edge_index, edge_weight = self.augment_adj(edge_index, edge_weight, x.size(0))
             x, edge_index, edge_weight, batch, perm, _ = self.pools[i - 1](
                 x, edge_index, edge_weight)
 
-            x, r = self.down_convs[i](x, edge_index, edge_weight, rel_embed=r)
+            x, r = self.down_convs[i](x, edge_index, edge_weight, rel_embed=rs[i-1])
 
             x = drop2(x)
+
+            rs += [r]
 
             if i < self.depth:
                 xs += [x]
@@ -162,7 +164,6 @@ class UCompGCNBase(BaseModel):
                 edge_weights += [edge_weight]
             perms += [perm]
 
-        _rs = []
         for i in range(self.depth):
             j = self.depth - 1 - i
             res = xs[j]
@@ -174,7 +175,7 @@ class UCompGCNBase(BaseModel):
             up[perm] = x
             x = res + up if self.sum_res else torch.cat((res, up), dim=-1)
 
-            x, r = self.up_convs[i](x, edge_index, edge_weight, rel_embed=r)
+            x, r = self.up_convs[i](x, edge_index, edge_weight, rel_embed=rs[j])
             x = drop2(x)
 
         sub_emb = torch.index_select(x, 0, sub)
